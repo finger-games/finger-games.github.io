@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Logo 去背向量工坊</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  /* 版面：左側是一步步往下的設定欄，右側是「原圖 ↔ 向量成品」兩個大預覽；手機時全部疊成一欄 */
+  :root {
+    --bg: #f7f4f6;
+    --panel: #ffffff;
+    --ink: #2b2129;
+    --muted: #7a6873;
+    --line: #e7dde3;
+    --accent: #b83f73;
+    --accent-ink: #ffffff;
+    --accent-soft: #f6e3ec;
+    --check-a: #ffffff;
+    --check-b: #ece6ea;
+    --ok: #2f7d57;
+    --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+    --font-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1c171b; --panel: #262026; --ink: #f3e9ef; --muted: #b19fab; --line: #3a3139;
+      --accent: #ec86b2; --accent-ink: #2a1320; --accent-soft: #3d2533;
+      --check-a: #3a3339; --check-b: #2c262b; --ok: #7fd0a5; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1c171b; --panel: #262026; --ink: #f3e9ef; --muted: #b19fab; --line: #3a3139;
+    --accent: #ec86b2; --accent-ink: #2a1320; --accent-soft: #3d2533;
+    --check-a: #3a3339; --check-b: #2c262b; --ok: #7fd0a5; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink); font-family: var(--font-body);
+    font-size: 15px; line-height: 1.6;
+    padding: max(20px, env(safe-area-inset-top, 0px)) 16px max(28px, env(safe-area-inset-bottom, 0px));
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 20px; }
+  header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px 20px; }
+  h1 { margin: 0; font-size: clamp(24px, 4vw, 32px); font-weight: 700; letter-spacing: .04em; text-wrap: balance; }
+  h1 span { color: var(--accent); }
+  .lead { margin: 4px 0 0; color: var(--muted); max-width: 60ch; }
+  .main { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .main { grid-template-columns: minmax(0, 1fr); } .previews { order: -1; } }
+
+  .controls { display: grid; gap: 14px; }
+  .step { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 12px; }
+  .step h2 { margin: 0; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .step h2 b { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent); color: var(--accent-ink); font-size: 12px; font-family: var(--font-num); }
+  .hint { margin: 0; font-size: 13px; color: var(--muted); }
+
+  .drop { border: 1.5px dashed var(--accent); border-radius: 12px; padding: 18px 12px; text-align: center;
+    background: var(--accent-soft); cursor: pointer; transition: transform .12s; }
+  .drop:hover, .drop.over { transform: translateY(-1px); }
+  .drop:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .drop strong { display: block; font-size: 15px; }
+  .drop small { color: var(--muted); }
+
+  .field { display: grid; gap: 4px; }
+  .field .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 14px; }
+  .field output { font-family: var(--font-num); font-size: 13px; color: var(--accent); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .check input { accent-color: var(--accent); width: 16px; height: 16px; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; color: var(--ink); padding: 8px 6px; font: inherit; font-size: 13px; cursor: pointer; }
+  .seg button.on { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+  .bgpick { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+  .swatch { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line); flex: none; }
+
+  .layers { display: grid; gap: 6px; }
+  .layer { display: grid; grid-template-columns: auto 34px 1fr auto; align-items: center; gap: 10px; font-size: 13px;
+    padding: 6px 8px; border-radius: 10px; border: 1px solid var(--line); }
+  .layer.off { opacity: .45; }
+  .layer input[type=color] { width: 34px; height: 28px; border: 1px solid var(--line); border-radius: 7px; padding: 0; background: none; cursor: pointer; }
+  .layer code { font-family: var(--font-num); font-size: 12px; }
+  .layer .pct { font-family: var(--font-num); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .quick { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  button.btn { font: inherit; font-size: 14px; border-radius: 10px; padding: 9px 14px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+  button.btn:hover { border-color: var(--accent); }
+  button.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+  button.btn.small { padding: 5px 10px; font-size: 12px; }
+  button.btn:disabled { opacity: .5; cursor: default; }
+  .dl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .dl .full { grid-column: 1 / -1; }
+
+  .previews { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; position: sticky; top: max(12px, env(safe-area-inset-top, 0px)); }
+  @media (max-width: 1080px) { .previews { grid-template-columns: minmax(0, 1fr); position: static; } }
+  .pane { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 10px; min-width: 0; }
+  .pane header { align-items: center; }
+  .pane h3 { margin: 0; font-size: 14px; font-weight: 700; }
+  .pane .meta { font-family: var(--font-num); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .stage { position: relative; border-radius: 10px; overflow: hidden; aspect-ratio: 1 / 1; max-width: 100%;
+    display: grid; place-items: center; padding: 14px; }
+  .stage.checker { background-color: var(--check-a);
+    background-image: conic-gradient(var(--check-b) 25%, transparent 0 50%, var(--check-b) 0 75%, transparent 0);
+    background-size: 20px 20px; }
+  .stage.white { background: #ffffff; }
+  .stage.black { background: #141014; }
+  .stage.brand { background: var(--accent); }
+  .stage > img, .stage > canvas, .stage > .svgbox { max-width: 100%; max-height: 100%; }
+  .stage > .svgbox { position: absolute; inset: 14px; }
+  .stage > .svgbox svg { width: 100%; height: 100%; display: block; }
+  #srcCanvas { cursor: crosshair; image-rendering: auto; }
+  .bgtabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .bgtabs button { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; padding: 0; }
+  .bgtabs button.on { border-color: var(--accent); }
+  .bgtabs [data-bg=checker] { background: conic-gradient(#ccc 25%, #fff 0 50%, #ccc 0 75%, #fff 0); background-size: 10px 10px; }
+  .bgtabs [data-bg=white] { background: #fff; }
+  .bgtabs [data-bg=black] { background: #141014; }
+  .bgtabs [data-bg=brand] { background: var(--accent); }
+  .busy { position: absolute; inset: auto 10px 10px auto; font-size: 12px; background: var(--panel); color: var(--muted);
+    border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; }
+  .status { font-size: 13px; color: var(--muted); min-height: 1.6em; }
+  .status.good { color: var(--ok); }
+  details { font-size: 13px; color: var(--muted); }
+  details summary { cursor: pointer; color: var(--ink); }
+  details ul { margin: 6px 0 0; padding-left: 18px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Logo <span>去背向量</span>工坊</h1>
+      <p class="lead">放一張圖進來，自動去背、清掉毛邊雜點，再轉成放大也不會糊的 SVG 向量檔，直接拿去做 Logo。</p>
+    </div>
+  </header>
+
+  <div class="main">
+    <section class="controls">
+      <div class="step">
+        <h2><b>1</b>放入圖片</h2>
+        <div class="drop" id="drop" tabindex="0" role="button" aria-label="選擇圖片">
+          <strong>點這裡選圖，或把圖拖進來</strong>
+          <small>JPG／PNG／WebP 都可以，也能直接 Ctrl+V 貼上</small>
+        </div>
+        <input type="file" id="file" accept="image/*" hidden>
+        <p class="hint" id="srcInfo">目前顯示的是範例圖，換成你自己的圖就會重新計算。</p>
+      </div>
+
+      <div class="step">
+        <h2><b>2</b>去背</h2>
+        <label class="check"><input type="checkbox" id="removeBg" checked> 移除背景顏色</label>
+        <div class="bgpick">
+          <span class="swatch" id="bgSwatch"></span>
+          <span>背景色 <code id="bgHex" style="font-family:var(--font-num)">#ffffff</code></span>
+        </div>
+        <p class="hint">猜錯了？在左邊「原圖」上點一下背景，就會改用那個顏色。</p>
+        <div class="field">
+          <div class="row"><label for="tol">去背範圍</label><output id="tolOut">40</output></div>
+          <input type="range" id="tol" min="5" max="160" value="40">
+        </div>
+        <div class="seg" role="group" aria-label="去背方式">
+          <button type="button" id="modeAll" class="on">同色全部去掉</button>
+          <button type="button" id="modeEdge">只去外圍</button>
+        </div>
+        <p class="hint">「同色全部去掉」連字母中間的洞（像 O、A）也會變透明；圖案裡有想保留的同色部分就選「只去外圍」。</p>
+      </div>
+
+      <div class="step">
+        <h2><b>3</b>顏色與乾淨度</h2>
+        <div class="field">
+          <div class="row"><label for="k">顏色數量</label><output id="kOut">3</output></div>
+          <input type="range" id="k" min="1" max="8" value="3">
+        </div>
+        <div class="field">
+          <div class="row"><label for="speck">清除雜點</label><output id="speckOut">60</output></div>
+          <input type="range" id="speck" min="0" max="600" step="10" value="60">
+        </div>
+        <div class="field">
+          <div class="row"><label for="smooth">邊緣平滑</label><output id="smoothOut">2</output></div>
+          <input type="range" id="smooth" min="0" max="5" value="2">
+        </div>
+        <div class="field">
+          <div class="row"><label for="simp">線條精簡</label><output id="simpOut">0.6</output></div>
+          <input type="range" id="simp" min="0.2" max="2.5" step="0.1" value="0.6">
+        </div>
+        <label class="check"><input type="checkbox" id="trim" checked> 自動裁掉四周空白</label>
+        <div class="layers" id="layers"></div>
+        <div class="quick">
+          <button class="btn small" type="button" id="toOrig">還原原色</button>
+          <button class="btn small" type="button" id="toBlack">全部黑色</button>
+          <button class="btn small" type="button" id="toWhite">全部白色</button>
+        </div>
+        <p class="hint">點色塊可以改顏色；取消勾選可以把那一層整個拿掉（例如陰影）。</p>
+      </div>
+
+      <div class="step">
+        <h2><b>4</b>下載</h2>
+        <div class="dl">
+          <button class="btn primary full" type="button" id="dlSvg">下載 SVG 向量檔</button>
+          <button class="btn" type="button" id="dlPng2">透明 PNG 2000px</button>
+          <button class="btn" type="button" id="dlPng4">透明 PNG 4000px</button>
+          <button class="btn full" type="button" id="copySvg">複製 SVG 程式碼</button>
+        </div>
+        <div class="status" id="status" role="status"></div>
+        <details>
+          <summary>檔案要怎麼用？</summary>
+          <ul>
+            <li><b>SVG</b>：真正的向量檔，放多大都不會糊。可以直接丟進 Illustrator、Canva、Figma，或交給印刷廠。</li>
+            <li><b>PNG</b>：透明背景的圖片，適合放 IG、LINE、網站。</li>
+          </ul>
+        </details>
+      </div>
+    </section>
+
+    <section class="previews">
+      <div class="pane">
+        <header><h3>原圖（點背景可取色）</h3><span class="meta" id="srcMeta"></span></header>
+        <div class="stage checker"><canvas id="srcCanvas" width="10" height="10"></canvas></div>
+      </div>
+      <div class="pane">
+        <header>
+          <h3>向量成品</h3>
+          <div class="bgtabs" role="group" aria-label="預覽底色">
+            <button type="button" data-bg="checker" class="on" title="透明格子" aria-label="透明格子"></button>
+            <button type="button" data-bg="white" title="白底" aria-label="白底"></button>
+            <button type="button" data-bg="black" title="黑底" aria-label="黑底"></button>
+            <button type="button" data-bg="brand" title="彩色底" aria-label="彩色底"></button>
+          </div>
+        </header>
+        <div class="stage checker" id="outStage"><div class="svgbox" id="svgBox"></div><span class="busy" id="busy" hidden>計算中…</span></div>
+        <div class="meta" id="outMeta"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const MAX_SIDE = 1200;            // 內部運算解析度（長邊）
+  const S = {
+    W: 0, H: 0, px: null, name: 'logo',
+    bg: [255, 255, 255], mode: 'all',
+    palette: [], paletteKey: '', colors: [], hidden: [],
+    svg: '', outW: 0, outH: 0,
+  };
+
+  /* ---------- 載入圖片 ---------- */
+  function loadImage(src, name) {
+    const img = new Image();
+    img.onload = () => {
+      const s = MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight);
+      const W = Math.max(1, Math.round(img.naturalWidth * s)), H = Math.max(1, Math.round(img.naturalHeight * s));
+      const c = $('srcCanvas'); c.width = W; c.height = H;
+      const g = c.getContext('2d', { willReadFrequently: true });
+      g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+      g.clearRect(0, 0, W, H); g.drawImage(img, 0, 0, W, H);
+      S.W = W; S.H = H; S.px = g.getImageData(0, 0, W, H).data;
+      S.name = (name || 'logo').replace(/\.[^.]+$/, '') || 'logo';
+      $('srcMeta').textContent = `${img.naturalWidth} × ${img.naturalHeight}`;
+      const transparent = borderTransparency();
+      $('removeBg').checked = !transparent;
+      S.bg = guessBg();
+      S.paletteKey = '';
+      $('k').value = autoK(); syncOutputs();
+      schedule();
+    };
+    img.onerror = () => setStatus('這個檔案讀不出來，換一張 JPG 或 PNG 試試看。');
+    img.src = src;
+  }
+  function openFile(f) {
+    if (!f || !f.type.startsWith('image/')) { setStatus('請選擇圖片檔（JPG、PNG、WebP）。'); return; }
+    const url = URL.createObjectURL(f);
+    $('srcInfo').textContent = `已載入：${f.name}`;
+    loadImage(url, f.name);
+  }
+
+  function borderTransparency() {
+    const { W, H, px } = S; let n = 0, t = 0;
+    forBorder((i) => { n++; if (px[i * 4 + 3] < 128) t++; });
+    return t / n > 0.3;
+  }
+  function forBorder(fn) {
+    const { W, H } = S;
+    for (let x = 0; x < W; x++) { fn(x); fn((H - 1) * W + x); }
+    for (let y = 1; y < H - 1; y++) { fn(y * W); fn(y * W + W - 1); }
+  }
+  function guessBg() {
+    const { px } = S, bins = new Map();
+    forBorder((i) => {
+      if (px[i * 4 + 3] < 128) return;
+      const k = (px[i * 4] >> 4) << 8 | (px[i * 4 + 1] >> 4) << 4 | (px[i * 4 + 2] >> 4);
+      let b = bins.get(k); if (!b) bins.set(k, b = [0, 0, 0, 0]);
+      b[0] += px[i * 4]; b[1] += px[i * 4 + 1]; b[2] += px[i * 4 + 2]; b[3]++;
+    });
+    let best = null; for (const b of bins.values()) if (!best || b[3] > best[3]) best = b;
+    return best ? [best[0] / best[3], best[1] / best[3], best[2] / best[3]].map(Math.round) : [255, 255, 255];
+  }
+
+  /* ---------- 1. 前景遮罩（去背） ---------- */
+  function foregroundMask() {
+    const { W, H, px, bg } = S, N = W * H, m = new Uint8Array(N);
+    const tol = +$('tol').value, t2 = tol * tol, remove = $('removeBg').checked;
+    const isBg = new Uint8Array(N);
+    for (let i = 0; i < N; i++) {
+      const o = i * 4;
+      if (px[o + 3] < 128) { isBg[i] = 2; continue; }
+      if (remove) {
+        const dr = px[o] - bg[0], dg = px[o + 1] - bg[1], db = px[o + 2] - bg[2];
+        if (dr * dr + dg * dg + db * db <= t2) isBg[i] = 1;
+      }
+    }
+    if (S.mode === 'all' || !remove) {
+      for (let i = 0; i < N; i++) m[i] = isBg[i] ? 0 : 1;
+    } else {
+      // 只從外圍往內漫延的背景色才算背景
+      m.fill(1);
+      for (let i = 0; i < N; i++) if (isBg[i] === 2) m[i] = 0;
+      const q = new Int32Array(N); let h = 0, t = 0;
+      forBorder((i) => { if (isBg[i] === 1 && m[i]) { m[i] = 0; q[t++] = i; } });
+      while (h < t) {
+        const i = q[h++], x = i % W;
+        if (x > 0 && isBg[i - 1] === 1 && m[i - 1]) { m[i - 1] = 0; q[t++] = i - 1; }
+        if (x < W - 1 && isBg[i + 1] === 1 && m[i + 1]) { m[i + 1] = 0; q[t++] = i + 1; }
+        if (i >= W && isBg[i - W] === 1 && m[i - W]) { m[i - W] = 0; q[t++] = i - W; }
+        if (i < N - W && isBg[i + W] === 1 && m[i + W]) { m[i + W] = 0; q[t++] = i + W; }
+      }
+    }
+    return m;
+  }
+
+  /* ---------- 2. 找出主要顏色（k-means） ---------- */
+  function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function samplePixels(m) {
+    // 只取「色塊內部」的像素，避免邊緣的混色被當成一種顏色
+    const { W, H, px } = S, N = W * H, out = [];
+    const step = Math.max(1, Math.floor(N / 160000));
+    for (let i = W + 1; i < N - W - 1; i += step) {
+      if (!m[i] || !m[i - 1] || !m[i + 1] || !m[i - W] || !m[i + W]) continue;
+      const o = i * 4, r = o + 4, d = o + W * 4;
+      const diff = Math.abs(px[o] - px[r]) + Math.abs(px[o + 1] - px[r + 1]) + Math.abs(px[o + 2] - px[r + 2])
+                 + Math.abs(px[o] - px[d]) + Math.abs(px[o + 1] - px[d + 1]) + Math.abs(px[o + 2] - px[d + 2]);
+      if (diff < 48) out.push(px[o], px[o + 1], px[o + 2]);
+    }
+    if (out.length < 30) for (let i = 0; i < N; i += step) if (m[i]) out.push(px[i * 4], px[i * 4 + 1], px[i * 4 + 2]);
+    return out;
+  }
+  function kmeans(data, k) {
+    const n = data.length / 3; if (!n) return { centers: [[0, 0, 0]], counts: [0] };
+    k = Math.min(k, n);
+    const rand = rng(7), C = [];
+    let first = Math.floor(rand() * n); C.push([data[first * 3], data[first * 3 + 1], data[first * 3 + 2]]);
+    const d2 = new Float64Array(n).fill(Infinity);
+    while (C.length < k) {
+      const c = C[C.length - 1]; let sum = 0;
+      for (let i = 0; i < n; i++) {
+        const a = data[i * 3] - c[0], b = data[i * 3 + 1] - c[1], e = data[i * 3 + 2] - c[2];
+        d2[i] = Math.min(d2[i], a * a + b * b + e * e); sum += d2[i];
+      }
+      if (sum === 0) break;
+      let r = rand() * sum, j = 0; for (; j < n - 1; j++) { r -= d2[j]; if (r <= 0) break; }
+      C.push([data[j * 3], data[j * 3 + 1], data[j * 3 + 2]]);
+    }
+    const asg = new Uint8Array(n); let counts = [];
+    for (let it = 0; it < 16; it++) {
+      const acc = C.map(() => [0, 0, 0, 0]);
+      for (let i = 0; i < n; i++) {
+        let best = 0, bd = Infinity;
+        for (let c = 0; c < C.length; c++) {
+          const a = data[i * 3] - C[c][0], b = data[i * 3 + 1] - C[c][1], e = data[i * 3 + 2] - C[c][2];
+          const d = a * a + b * b + e * e; if (d < bd) { bd = d; best = c; }
+        }
+        asg[i] = best; const A = acc[best]; A[0] += data[i * 3]; A[1] += data[i * 3 + 1]; A[2] += data[i * 3 + 2]; A[3]++;
+      }
+      counts = acc.map(a => a[3]);
+      acc.forEach((a, c) => { if (a[3]) C[c] = [a[0] / a[3], a[1] / a[3], a[2] / a[3]]; });
+    }
+    return { centers: C, counts };
+  }
+  function autoK() {
+    const data = samplePixels(foregroundMask());
+    let { centers, counts } = kmeans(data, 8);
+    let cs = centers.map((c, i) => ({ c, n: counts[i] })).filter(o => o.n > 0);
+    const total = cs.reduce((s, o) => s + o.n, 0);
+    let merged = true;
+    while (merged && cs.length > 1) {
+      merged = false;
+      outer: for (let a = 0; a < cs.length; a++) for (let b = a + 1; b < cs.length; b++) {
+        const d = Math.hypot(cs[a].c[0] - cs[b].c[0], cs[a].c[1] - cs[b].c[1], cs[a].c[2] - cs[b].c[2]);
+        if (d < 48) {
+          const n = cs[a].n + cs[b].n;
+          cs[a] = { c: cs[a].c.map((v, i) => (v * cs[a].n + cs[b].c[i] * cs[b].n) / n), n };
+          cs.splice(b, 1); merged = true; break outer;
+        }
+      }
+    }
+    return Math.max(1, Math.min(8, cs.filter(o => o.n / total > 0.012).length));
+  }
+
+  /* ---------- 3. 每個像素分配顏色＋清理 ---------- */
+  function labelPixels(m, centers) {
+    const { W, H, px } = S, N = W * H, L = new Uint8Array(N);
+    // 靠近背景的邊緣像素其實是「圖案色＋背景色」混出來的，用「最像哪條混色線」來判斷，才不會在字的外圍多出一圈別的顏色
+    const edge = new Uint8Array(N), useBg = $('removeBg').checked, bg = S.bg;
+    if (useBg) {
+      for (let i = 0; i < N; i++) if (!m[i]) edge[i] = 3;
+      for (let pass = 3; pass > 1; pass--) for (let i = 0; i < N; i++) {
+        if (edge[i] !== pass) continue; const x = i % W;
+        if (x > 0 && !edge[i - 1]) edge[i - 1] = pass - 1; if (x < W - 1 && !edge[i + 1]) edge[i + 1] = pass - 1;
+        if (i >= W && !edge[i - W]) edge[i - W] = pass - 1; if (i < N - W && !edge[i + W]) edge[i + W] = pass - 1;
+      }
+    }
+    for (let i = 0; i < N; i++) {
+      if (!m[i]) continue;
+      const o = i * 4; let best = 0, bd = Infinity;
+      if (edge[i] === 1 || edge[i] === 2) {
+        for (let c = 0; c < centers.length; c++) {
+          const vx = centers[c][0] - bg[0], vy = centers[c][1] - bg[1], vz = centers[c][2] - bg[2];
+          const wx = px[o] - bg[0], wy = px[o + 1] - bg[1], wz = px[o + 2] - bg[2];
+          const vv = vx * vx + vy * vy + vz * vz || 1;
+          const t = Math.max(0, Math.min(1, (wx * vx + wy * vy + wz * vz) / vv));
+          const a = wx - vx * t, b = wy - vy * t, e = wz - vz * t;
+          const d = a * a + b * b + e * e + (1 - t) * 200; if (d < bd) { bd = d; best = c; }
+        }
+        L[i] = best + 1; continue;
+      }
+      for (let c = 0; c < centers.length; c++) {
+        const a = px[o] - centers[c][0], b = px[o + 1] - centers[c][1], e = px[o + 2] - centers[c][2];
+        const d = a * a + b * b + e * e; if (d < bd) { bd = d; best = c; }
+      }
+      L[i] = best + 1;
+    }
+    return L;
+  }
+  function majority(L) {
+    const { W, H } = S, out = new Uint8Array(L), cnt = new Uint8Array(16);
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+      const i = y * W + x; cnt.fill(0);
+      for (let dy = -W; dy <= W; dy += W) { cnt[L[i + dy - 1]]++; cnt[L[i + dy]]++; cnt[L[i + dy + 1]]++; }
+      let best = L[i], bn = cnt[best];
+      for (let v = 0; v < 16; v++) if (cnt[v] > bn) { bn = cnt[v]; best = v; }
+      out[i] = best;
+    }
+    return out;
+  }
+  function removeSpecks(L, minArea) {
+    if (minArea <= 0) return;
+    const { W, H } = S, N = W * H, seen = new Uint8Array(N), q = new Int32Array(N), nb = new Int32Array(16);
+    for (let s = 0; s < N; s++) {
+      if (seen[s]) continue;
+      const lab = L[s]; let h = 0, t = 0; q[t++] = s; seen[s] = 1; nb.fill(0);
+      while (h < t) {
+        const i = q[h++], x = i % W;
+        const visit = (j) => { if (L[j] === lab) { if (!seen[j]) { seen[j] = 1; q[t++] = j; } } else nb[L[j]]++; };
+        if (x > 0) visit(i - 1); if (x < W - 1) visit(i + 1); if (i >= W) visit(i - W); if (i < N - W) visit(i + W);
+      }
+      if (t < minArea) {
+        let best = -1, bn = 0; for (let v = 0; v < 16; v++) if (nb[v] > bn) { bn = nb[v]; best = v; }
+        if (best >= 0) for (let k = 0; k < t; k++) L[q[k]] = best;
+      }
+    }
+  }
+
+  /* ---------- 4. 描邊成向量（模糊 → 等高線 → 精簡 → 貝茲曲線） ---------- */
+  function boxBlur(src, w, h, r, passes) {
+    let a = src, b = new Float32Array(w * h);
+    const inv = 1 / (2 * r + 1);
+    for (let p = 0; p < passes; p++) {
+      for (let y = 0; y < h; y++) {
+        const row = y * w; let acc = 0;
+        for (let x = -r; x <= r; x++) acc += a[row + Math.min(w - 1, Math.max(0, x))];
+        for (let x = 0; x < w; x++) {
+          b[row + x] = acc * inv;
+          acc += a[row + Math.min(w - 1, x + r + 1)] - a[row + Math.max(0, x - r)];
+        }
+      }
+      for (let x = 0; x < w; x++) {
+        let acc = 0;
+        for (let y = -r; y <= r; y++) acc += b[Math.min(h - 1, Math.max(0, y)) * w + x];
+        for (let y = 0; y < h; y++) {
+          a[y * w + x] = acc * inv;
+          acc += b[Math.min(h - 1, y + r + 1) * w + x] - b[Math.max(0, y - r) * w + x];
+        }
+      }
+    }
+    return a;
+  }
+  function contours(field, w, h) {
+    // field 已經外加一圈 0，所以每條線都會封閉
+    const GW = w, GH = h, VOFF = GW * GH, adj = new Map();
+    const link = (a, b) => {
+      let l = adj.get(a); if (!l) adj.set(a, l = []); l.push(b);
+      l = adj.get(b); if (!l) adj.set(b, l = []); l.push(a);
+    };
+    for (let j = 0; j < GH - 1; j++) for (let i = 0; i < GW - 1; i++) {
+      const tl = field[j * GW + i], tr = field[j * GW + i + 1], br = field[(j + 1) * GW + i + 1], bl = field[(j + 1) * GW + i];
+      const c = (tl >= .5 ? 8 : 0) | (tr >= .5 ? 4 : 0) | (br >= .5 ? 2 : 0) | (bl >= .5 ? 1 : 0);
+      if (c === 0 || c === 15) continue;
+      const T = j * GW + i, B = (j + 1) * GW + i, Lf = VOFF + j * GW + i, R = VOFF + j * GW + i + 1;
+      switch (c) {
+        case 1: case 14: link(Lf, B); break;
+        case 2: case 13: link(B, R); break;
+        case 3: case 12: link(Lf, R); break;
+        case 4: case 11: link(T, R); break;
+        case 6: case 9: link(T, B); break;
+        case 7: case 8: link(Lf, T); break;
+        case 5: if ((tl + tr + br + bl) / 4 >= .5) { link(Lf, T); link(B, R); } else { link(Lf, B); link(T, R); } break;
+        case 10: if ((tl + tr + br + bl) / 4 >= .5) { link(T, R); link(Lf, B); } else { link(Lf, T); link(B, R); } break;
+      }
+    }
+    const pt = (id) => {
+      if (id < VOFF) { const j = (id / GW) | 0, i = id - j * GW, a = field[id], b = field[id + 1]; return [i + (.5 - a) / (b - a), j]; }
+      id -= VOFF; const j = (id / GW) | 0, i = id - j * GW, a = field[id], b = field[id + GW]; return [i, j + (.5 - a) / (b - a)];
+    };
+    const loops = [], done = new Set();
+    for (const start of adj.keys()) {
+      if (done.has(start)) continue;
+      const loop = []; let prev = -1, cur = start;
+      for (let guard = 0; guard < 4e6; guard++) {
+        done.add(cur); loop.push(pt(cur));
+        const l = adj.get(cur); const nx = l[0] !== prev ? l[0] : l[1];
+        prev = cur; cur = nx;
+        if (cur === start || cur === undefined || done.has(cur)) break;
+      }
+      if (loop.length >= 4) loops.push(loop);
+    }
+    return loops;
+  }
+  function simplify(P, eps) {
+    const n = P.length; if (n < 5) return P;
+    let far = 0, fd = -1; for (let i = 1; i < n; i++) { const d = (P[i][0] - P[0][0]) ** 2 + (P[i][1] - P[0][1]) ** 2; if (d > fd) { fd = d; far = i; } }
+    const keep = new Uint8Array(n + 1); keep[0] = keep[far] = keep[n] = 1;
+    const get = (i) => P[i % n], e2 = eps * eps, stack = [[0, far], [far, n]];
+    while (stack.length) {
+      const [a, b] = stack.pop(); if (b - a < 2) continue;
+      const A = get(a), B = get(b), dx = B[0] - A[0], dy = B[1] - A[1], len2 = dx * dx + dy * dy || 1e-9;
+      let md = -1, mi = -1;
+      for (let i = a + 1; i < b; i++) {
+        const p = get(i); const cr = (p[0] - A[0]) * dy - (p[1] - A[1]) * dx; const d = cr * cr / len2;
+        if (d > md) { md = d; mi = i; }
+      }
+      if (md > e2) { keep[mi] = 1; stack.push([a, mi], [mi, b]); }
+    }
+    const out = []; for (let i = 0; i < n; i++) if (keep[i]) out.push(P[i]); return out;
+  }
+  function relax(P, times) {
+    // 把鋸齒狀的小抖動抹平（點很密，所以不會把轉角磨圓）
+    const n = P.length; let A = P;
+    for (let t = 0; t < times; t++) {
+      const B = new Array(n);
+      for (let i = 0; i < n; i++) {
+        const a = A[(i - 1 + n) % n], b = A[i], c = A[(i + 1) % n];
+        B[i] = [(a[0] + 2 * b[0] + c[0]) / 4, (a[1] + 2 * b[1] + c[1]) / 4];
+      }
+      A = B;
+    }
+    return A;
+  }
+  function area(P) { let s = 0; for (let i = 0, n = P.length; i < n; i++) { const a = P[i], b = P[(i + 1) % n]; s += a[0] * b[1] - b[0] * a[1]; } return s / 2; }
+  const f = (v) => { const r = Math.round(v * 100) / 100; return String(r); };
+  function toPath(P) {
+    const n = P.length; if (n < 3) return '';
+    const corner = new Uint8Array(n), tan = [];
+    for (let i = 0; i < n; i++) {
+      const a = P[(i - 1 + n) % n], b = P[i], c = P[(i + 1) % n];
+      const ux = b[0] - a[0], uy = b[1] - a[1], vx = c[0] - b[0], vy = c[1] - b[1];
+      const lu = Math.hypot(ux, uy) || 1e-9, lv = Math.hypot(vx, vy) || 1e-9;
+      const cos = (ux * vx + uy * vy) / (lu * lv);
+      corner[i] = cos < Math.cos(55 * Math.PI / 180) ? 1 : 0;
+      const tx = c[0] - a[0], ty = c[1] - a[1], lt = Math.hypot(tx, ty) || 1e-9;
+      tan.push([tx / lt, ty / lt]);
+    }
+    let d = `M${f(P[0][0])} ${f(P[0][1])}`;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n, A = P[i], B = P[j], L = Math.hypot(B[0] - A[0], B[1] - A[1]);
+      if (corner[i] && corner[j]) { d += j === 0 ? 'Z' : `L${f(B[0])} ${f(B[1])}`; continue; }
+      const c1 = corner[i] ? [A[0] + (B[0] - A[0]) / 3, A[1] + (B[1] - A[1]) / 3] : [A[0] + tan[i][0] * L / 3, A[1] + tan[i][1] * L / 3];
+      const c2 = corner[j] ? [B[0] - (B[0] - A[0]) / 3, B[1] - (B[1] - A[1]) / 3] : [B[0] - tan[j][0] * L / 3, B[1] - tan[j][1] * L / 3];
+      d += `C${f(c1[0])} ${f(c1[1])} ${f(c2[0])} ${f(c2[1])} ${f(B[0])} ${f(B[1])}`;
+      if (j === 0) d += 'Z';
+    }
+    return d;
+  }
+
+  /* ---------- 主流程 ---------- */
+  function run() {
+    if (!S.px) return;
+    const t0 = performance.now();
+    const { W, H } = S, N = W * H;
+    const k = +$('k').value, m = foregroundMask();
+    const key = [k, $('tol').value, S.mode, $('removeBg').checked, S.bg.join(','), S.W, S.H, S.px.length].join('|');
+    if (key !== S.paletteKey) {
+      const km = kmeans(samplePixels(m), k);
+      S.palette = km.centers.map(c => c.map(Math.round));
+      S.colors = S.palette.map(hex);
+      S.hidden = S.palette.map(() => false);
+      S.paletteKey = key;
+    }
+    let L = labelPixels(m, S.palette);
+    const smooth = +$('smooth').value;
+    if (smooth > 0) L = majority(L);
+    for (let c = 0; c < S.palette.length; c++) if (S.hidden[c]) for (let i = 0; i < N; i++) if (L[i] === c + 1) L[i] = 0;
+    removeSpecks(L, +$('speck').value);
+
+    // 內容範圍
+    let x0 = W, y0 = H, x1 = -1, y1 = -1; const counts = new Array(S.palette.length + 1).fill(0);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const v = L[y * W + x]; counts[v]++;
+      if (v) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    renderLayers(counts);
+    if (x1 < 0) { S.svg = ''; $('svgBox').innerHTML = ''; $('outMeta').textContent = '沒有留下任何圖案，試著把「去背範圍」調小。'; return; }
+
+    const r = smooth, pad = r * 3 + 2;
+    const cx0 = Math.max(0, x0 - pad), cy0 = Math.max(0, y0 - pad), cx1 = Math.min(W - 1, x1 + pad), cy1 = Math.min(H - 1, y1 + pad);
+    const cw = cx1 - cx0 + 1, ch = cy1 - cy0 + 1, fw = cw + 2, fh = ch + 2;
+
+    // 面積大的先畫在下面；每層都「往下多鋪」上面各層的範圍，層與層之間就不會露出白縫
+    const order = S.palette.map((_, c) => c).filter(c => counts[c + 1] > 0).sort((a, b) => counts[b + 1] - counts[a + 1]);
+    const eps = +$('simp').value, paths = [];
+    for (let oi = 0; oi < order.length; oi++) {
+      const inSet = new Uint8Array(16); for (let q = oi + 1; q < order.length; q++) inSet[order[q] + 1] = 1;
+      const own = order[oi] + 1;
+      let field = new Float32Array(fw * fh);
+      for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) field[(y + 1) * fw + x + 1] = L[(y + cy0) * W + x + cx0] === own ? 1 : 0;
+      if (oi < order.length - 1) {
+        // 只在「貼著自己」的地方往上層底下多鋪幾格，避免不相鄰的圖案邊緣冒出底色
+        const near = boxBlur(new Float32Array(field), fw, fh, r + 2, 1);
+        for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+          const fi = (y + 1) * fw + x + 1;
+          if (near[fi] > 0.001 && inSet[L[(y + cy0) * W + x + cx0]]) field[fi] = 1;
+        }
+      }
+      if (r > 0) field = boxBlur(field, fw, fh, r, 2);
+      for (let x = 0; x < fw; x++) { field[x] = 0; field[(fh - 1) * fw + x] = 0; }
+      for (let y = 0; y < fh; y++) { field[y * fw] = 0; field[y * fw + fw - 1] = 0; }
+      const loops = contours(field, fw, fh);
+      let d = '';
+      for (const lp of loops) {
+        for (const p of lp) { p[0] += cx0 - 0.5; p[1] += cy0 - 0.5; }
+        const sp = simplify(relax(lp, 2), eps);
+        if (sp.length < 3 || Math.abs(area(sp)) < 3) continue;
+        d += toPath(sp);
+      }
+      if (d) paths.push({ c: order[oi], d });
+    }
+
+    // 輸出範圍
+    let vx = 0, vy = 0, vw = W, vh = H;
+    if ($('trim').checked) {
+      const m2 = Math.round(Math.max(x1 - x0, y1 - y0) * 0.04) + 2;
+      vx = x0 - m2; vy = y0 - m2; vw = x1 - x0 + 1 + 2 * m2; vh = y1 - y0 + 1 + 2 * m2;
+    }
+    S.outW = vw; S.outH = vh;
+    const body = paths.map(p => `  <path data-layer="${p.c}" fill="${S.colors[p.c]}" fill-rule="evenodd" d="${p.d}"/>`).join('\n');
+    S.svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vx} ${vy} ${vw} ${vh}" width="${vw}" height="${vh}">\n${body}\n</svg>\n`;
+    $('svgBox').innerHTML = S.svg;
+    const nodes = (body.match(/[CL]/g) || []).length;
+    $('outMeta').textContent = `${paths.length} 個色層 · ${nodes} 個節點 · ${(S.svg.length / 1024).toFixed(1)} KB · ${Math.round(performance.now() - t0)} ms`;
+  }
+
+  function renderLayers(counts) {
+    const box = $('layers'), total = counts.slice(1).reduce((a, b) => a + b, 0) || 1;
+    box.innerHTML = '';
+    S.palette.forEach((_, c) => {
+      const row = document.createElement('div'); row.className = 'layer' + (S.hidden[c] ? ' off' : '');
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !S.hidden[c]; cb.id = 'lv' + c;
+      cb.setAttribute('aria-label', `顯示第 ${c + 1} 層`);
+      cb.onchange = () => { S.hidden[c] = !cb.checked; schedule(); };
+      const col = document.createElement('input'); col.type = 'color'; col.value = S.colors[c]; col.id = 'lc' + c;
+      col.setAttribute('aria-label', `第 ${c + 1} 層顏色`);
+      col.oninput = () => { S.colors[c] = col.value; code.textContent = col.value; recolor(); };
+      col.onchange = () => schedule();
+      const code = document.createElement('code'); code.textContent = S.colors[c];
+      const pct = document.createElement('span'); pct.className = 'pct';
+      pct.textContent = S.hidden[c] ? '已隱藏' : (counts[c + 1] / total * 100).toFixed(1) + '%';
+      row.append(cb, col, code, pct); box.append(row);
+    });
+  }
+  function recolor() {
+    // 只換顏色不用重算形狀：每條 path 記著自己是第幾層
+    S.svg = S.svg.replace(/data-layer="(\d+)" fill="#[0-9a-fA-F]{6}"/g, (_, c) => `data-layer="${c}" fill="${S.colors[c]}"`);
+    $('svgBox').innerHTML = S.svg;
+  }
+  const hex = (c) => '#' + c.map(v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('');
+
+  let timer = 0;
+  function schedule() {
+    clearTimeout(timer); $('busy').hidden = false;
+    timer = setTimeout(() => { try { run(); } catch (e) { console.error(e); setStatus('計算時出了點問題，換張圖或調整一下設定再試試。'); } $('busy').hidden = true; }, 120);
+  }
+
+  /* ---------- 介面 ---------- */
+  function syncOutputs() {
+    for (const id of ['tol', 'k', 'speck', 'smooth', 'simp']) $(id + 'Out').textContent = $(id).value;
+    $('bgSwatch').style.background = hex(S.bg); $('bgHex').textContent = hex(S.bg);
+  }
+  for (const id of ['tol', 'k', 'speck', 'smooth', 'simp']) $(id).addEventListener('input', () => { syncOutputs(); schedule(); });
+  for (const id of ['removeBg', 'trim']) $(id).addEventListener('change', schedule);
+  const setMode = (m) => { S.mode = m; $('modeAll').classList.toggle('on', m === 'all'); $('modeEdge').classList.toggle('on', m === 'edge'); schedule(); };
+  $('modeAll').onclick = () => setMode('all'); $('modeEdge').onclick = () => setMode('edge');
+
+  $('srcCanvas').addEventListener('click', (e) => {
+    if (!S.px) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = Math.floor((e.clientX - r.left) / r.width * S.W), y = Math.floor((e.clientY - r.top) / r.height * S.H);
+    const i = (Math.min(S.H - 1, Math.max(0, y)) * S.W + Math.min(S.W - 1, Math.max(0, x))) * 4;
+    if (S.px[i + 3] < 128) return;
+    S.bg = [S.px[i], S.px[i + 1], S.px[i + 2]]; $('removeBg').checked = true;
+    syncOutputs(); schedule();
+  });
+
+  const setAll = (c) => { S.colors = S.colors.map(() => c); schedule(); };
+  $('toBlack').onclick = () => setAll('#000000');
+  $('toWhite').onclick = () => setAll('#ffffff');
+  $('toOrig').onclick = () => { S.colors = S.palette.map(hex); schedule(); };
+
+  document.querySelectorAll('.bgtabs button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.bgtabs button').forEach(x => x.classList.toggle('on', x === b));
+    $('outStage').className = 'stage ' + b.dataset.bg;
+  });
+
+  const drop = $('drop');
+  drop.onclick = () => $('file').click();
+  drop.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('file').click(); } };
+  $('file').onchange = (e) => openFile(e.target.files[0]);
+  ['dragenter', 'dragover'].forEach(t => document.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(t => document.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+  document.addEventListener('drop', (e) => { const f = e.dataTransfer.files[0]; if (f) openFile(f); });
+  document.addEventListener('paste', (e) => {
+    for (const it of e.clipboardData.items) if (it.type.startsWith('image/')) { openFile(it.getAsFile()); break; }
+  });
+
+  function setStatus(msg, good) { const s = $('status'); s.textContent = msg; s.classList.toggle('good', !!good); }
+  function save(blob, name) {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+  $('dlSvg').onclick = () => {
+    if (!S.svg) return setStatus('還沒有成品可以下載。');
+    save(new Blob([S.svg], { type: 'image/svg+xml' }), S.name + '-logo.svg'); setStatus('SVG 已下載 ✓', true);
+  };
+  function png(size) {
+    if (!S.svg) return setStatus('還沒有成品可以下載。');
+    const img = new Image();
+    img.onload = () => {
+      const s = size / Math.max(S.outW, S.outH), c = document.createElement('canvas');
+      c.width = Math.round(S.outW * s); c.height = Math.round(S.outH * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => { save(b, `${S.name}-logo-${size}.png`); setStatus(`PNG ${c.width}×${c.height} 已下載 ✓`, true); }, 'image/png');
+    };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(S.svg);
+  }
+  $('dlPng2').onclick = () => png(2000);
+  $('dlPng4').onclick = () => png(4000);
+  $('copySvg').onclick = () => {
+    if (!S.svg) return;
+    navigator.clipboard.writeText(S.svg).then(() => setStatus('SVG 程式碼已複製 ✓', true), () => setStatus('瀏覽器不讓複製，請改用「下載 SVG」。'));
+  };
+
+  /* ---------- 範例圖：模擬一張白底、有 JPG 雜訊的 Logo ---------- */
+  function sample() {
+    const c = document.createElement('canvas'); c.width = 900; c.height = 700;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fbfaf7'; g.fillRect(0, 0, 900, 700);
+    g.fillStyle = '#c24a7c'; g.beginPath(); g.arc(450, 280, 170, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#fbfaf7'; g.beginPath(); g.ellipse(450, 300, 110, 55, 0, 0, Math.PI); g.fill();
+    g.strokeStyle = '#2d2230'; g.lineWidth = 14; g.lineCap = 'round';
+    g.beginPath(); g.ellipse(450, 300, 110, 55, 0, 0, Math.PI); g.stroke();
+    for (let i = 0; i < 7; i++) {
+      const a = Math.PI * (0.15 + i * 0.7 / 6), x = 450 + Math.cos(a) * 110, y = 300 + Math.sin(a) * 55;
+      g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + Math.cos(a) * 30, y + 40, x + Math.cos(a) * 55, y + 62); g.stroke();
+    }
+    g.fillStyle = '#2d2230'; g.font = '700 84px "Noto Sans TC", "PingFang TC", sans-serif'; g.textAlign = 'center';
+    g.fillText('LASH ART', 450, 580);
+    g.fillStyle = '#e0a458'; g.beginPath(); g.arc(610, 150, 26, 0, Math.PI * 2); g.fill();
+    for (let n = 0; n < 900; n++) { g.fillStyle = `rgba(120,110,110,${Math.random() * 0.25})`; g.fillRect(Math.random() * 900, Math.random() * 700, 2, 2); }
+    loadImage(c.toDataURL('image/jpeg', 0.55), '範例');
+  }
+  syncOutputs();
+  sample();
+})();
+</script>
+</body>
+</html>
